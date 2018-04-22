@@ -23,19 +23,20 @@ diff -ur freeradius-server-2.1.12/raddb/users freeradius-server-2.1.12-wpe/raddb
 +DEFAULT Cleartext-Password := "a"
 diff -ur freeradius-server-2.1.12/src/include/radiusd.h freeradius-server-2.1.12-wpe/src/include/radiusd.h
 --- freeradius-server-2.1.12/src/include/radiusd.h	2011-09-30 14:12:07.000000000 +0000
-+++ freeradius-server-2.1.12-wpe/src/include/radiusd.h	2018-04-22 12:26:06.545765957 +0000
-+++ freeradius-server-2.1.12-wpe/src/include/radiusd.h	2018-04-22 14:30:22.482515851 +0000
-@@ -368,6 +368,7 @@
++++ freeradius-server-2.1.12-wpe/src/include/radiusd.h	2018-04-22 19:37:03.792229557 +0000
+@@ -368,6 +368,8 @@
  #endif
  	char		*log_file;
  	char		*checkrad;
 +	char		*wpelogfile;
++	char		*wpehashfile;
  	const char      *pid_file;
  	rad_listen_t	*listen;
  	int		syslog_facility;
 diff -ur freeradius-server-2.1.12/src/main/auth.c freeradius-server-2.1.12-wpe/src/main/auth.c
 --- freeradius-server-2.1.12/src/main/auth.c	2011-09-30 14:12:07.000000000 +0000
 +++ freeradius-server-2.1.12-wpe/src/main/auth.c	2018-04-22 12:26:06.555766010 +0000
++++ freeradius-server-2.1.12-wpe/src/main/auth.c	2018-04-22 14:30:22.492515899 +0000
 @@ -350,6 +350,7 @@
  					return -1;
  				}
@@ -150,14 +151,14 @@ diff -ur freeradius-server-2.1.12/src/main/log.c freeradius-server-2.1.12-wpe/sr
   *      Dump a whole list of attributes to DEBUG2
 diff -ur freeradius-server-2.1.12/src/main/mainconfig.c freeradius-server-2.1.12-wpe/src/main/mainconfig.c
 --- freeradius-server-2.1.12/src/main/mainconfig.c	2011-09-30 14:12:07.000000000 +0000
-+++ freeradius-server-2.1.12-wpe/src/main/mainconfig.c	2018-04-22 12:26:06.565766063 +0000
-+++ freeradius-server-2.1.12-wpe/src/main/mainconfig.c	2018-04-22 12:26:06.555766010 +0000
-@@ -232,7 +232,7 @@
++++ freeradius-server-2.1.12-wpe/src/main/mainconfig.c	2018-04-22 19:36:37.372100682 +0000
+@@ -232,7 +232,8 @@
  	{ "checkrad", PW_TYPE_STRING_PTR, 0, &mainconfig.checkrad, "${sbindir}/checkrad" },
  
  	{ "debug_level", PW_TYPE_INTEGER, 0, &mainconfig.debug_level, "0"},
 -
 +	{ "wpelogfile", PW_TYPE_STRING_PTR, 0, &mainconfig.wpelogfile, "${logdir}/freeradius-server-wpe.log" },
++	{ "wpehashfile", PW_TYPE_STRING_PTR, 0, &mainconfig.wpehashfile, "${logdir}/hashes.txt" },
  #ifdef WITH_PROXY
  	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_requests, "yes" },
  #endif
